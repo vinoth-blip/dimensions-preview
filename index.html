@@ -1,0 +1,371 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Dimension Preview</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a file list on the left, a preview stage with measured edges on the right; stacks on phones. */
+  :root {
+    --bg: #f3f5f6;
+    --surface: #ffffff;
+    --surface-2: #e9eef0;
+    --fg: #14202a;
+    --muted: #5b6b76;
+    --line: #d3dce1;
+    --accent: #0b6e8a;
+    --accent-fg: #ffffff;
+    --dim: #c2410c;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f171c;
+      --surface: #16222a;
+      --surface-2: #1d2d37;
+      --fg: #e6edf1;
+      --muted: #8fa1ac;
+      --line: #2a3d49;
+      --accent: #4cc3e0;
+      --accent-fg: #06222b;
+      --dim: #fb923c;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f171c;
+    --surface: #16222a;
+    --surface-2: #1d2d37;
+    --fg: #e6edf1;
+    --muted: #8fa1ac;
+    --line: #2a3d49;
+    --accent: #4cc3e0;
+    --accent-fg: #06222b;
+    --dim: #fb923c;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+    padding-block: 28px 40px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+  h1 { font-size: 24px; line-height: 1.2; font-weight: 600; margin: 0; text-wrap: balance; }
+  .lede { margin: 4px 0 0; color: var(--muted); max-width: 60ch; }
+  button { font: inherit; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .drop {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px;
+    background: var(--surface); border: 1.5px dashed var(--line); border-radius: 10px; padding: 18px 20px;
+    transition: border-color .15s, background .15s;
+  }
+  .drop.over { border-color: var(--accent); background: var(--surface-2); }
+  .drop p { margin: 0; min-width: 0; }
+  .drop .hint { color: var(--muted); font-size: 13px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn {
+    border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+    padding: 8px 14px; border-radius: 6px; font-weight: 500; font-size: 14px;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .btn.primary:hover { filter: brightness(1.08); background: var(--accent); }
+  .btn.small { padding: 5px 11px; font-size: 13px; }
+  .btn.ghost { border-color: transparent; color: var(--muted); background: transparent; }
+  .btn.ghost:hover { color: var(--fg); background: var(--surface-2); }
+
+  .main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .main { grid-template-columns: minmax(0, 1fr); } }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 12px 16px; border-bottom: 1px solid var(--line);
+  }
+  .panel-head h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+  ul.files { list-style: none; margin: 0; padding: 0; }
+  .file { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  .file:last-child { border-bottom: 0; }
+  .file.active { background: var(--surface-2); }
+  .thumb { flex: none; width: 44px; height: 44px; border-radius: 5px; object-fit: cover; background: var(--surface-2); border: 1px solid var(--line); }
+  .meta { flex: 1; min-width: 0; }
+  .name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sub { font-family: var(--font-data); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .sub .px { color: var(--dim); }
+  .row-actions { flex: none; display: flex; gap: 4px; }
+  .empty { padding: 28px 16px; color: var(--muted); text-align: center; }
+
+  .stage-wrap { padding: 16px; }
+  .stage {
+    background: var(--surface-2); border-radius: 8px; padding: 34px 16px 16px 44px; min-height: 260px;
+    display: flex; align-items: flex-start; overflow: hidden;
+  }
+  .stage.idle { align-items: center; justify-content: center; padding: 16px; color: var(--muted); text-align: center; }
+  .frame { position: relative; width: fit-content; max-width: 100%; line-height: 0; }
+  .frame img {
+    display: block; max-width: 100%; max-height: 380px; border-radius: 2px;
+    background-image: conic-gradient(var(--line) 25%, transparent 0 50%, var(--line) 0 75%, transparent 0);
+    background-size: 14px 14px;
+  }
+  .dim { position: absolute; background: var(--dim); }
+  .dim-w { left: 0; right: 0; top: -16px; height: 1px; }
+  .dim-h { top: 0; bottom: 0; left: -16px; width: 1px; }
+  .dim::before, .dim::after { content: ""; position: absolute; background: var(--dim); }
+  .dim-w::before, .dim-w::after { top: -4px; width: 1px; height: 9px; }
+  .dim-w::before { left: 0; } .dim-w::after { right: 0; }
+  .dim-h::before, .dim-h::after { left: -4px; height: 1px; width: 9px; }
+  .dim-h::before { top: 0; } .dim-h::after { bottom: 0; }
+  .dim-label {
+    position: absolute; font-family: var(--font-data); font-size: 12px; line-height: 1; font-weight: 500; color: var(--dim);
+    background: var(--surface-2); padding: 2px 6px; white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  .dim-w .dim-label { left: 50%; top: 0; transform: translate(-50%, -50%); }
+  .dim-h .dim-label { top: 50%; left: 0; transform: translate(-50%, -50%) rotate(-90deg); }
+
+  dl.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px 16px; margin: 16px 0 0; }
+  dl.facts div { min-width: 0; }
+  dl.facts dt { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  dl.facts dd { margin: 2px 0 0; font-family: var(--font-data); font-size: 14px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .stage-name { margin: 14px 0 0; font-weight: 500; overflow-wrap: anywhere; }
+  .note { margin: 0; padding: 0 16px 16px; font-size: 13px; color: var(--muted); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Dimension Preview</h1>
+    <p class="lede">Upload images, then press Preview on any of them to see the picture with its width and height in pixels.</p>
+  </header>
+
+  <section class="drop" id="drop">
+    <div>
+      <p><strong>Drop images here</strong> or choose files</p>
+      <p class="hint">PNG, JPG, WebP, GIF, SVG. Files stay in your browser.</p>
+    </div>
+    <div class="actions">
+      <label class="btn primary" for="picker" style="cursor:pointer">Choose images</label>
+      <input class="sr" id="picker" type="file" accept="image/*" multiple>
+      <button class="btn" id="sample" type="button">Add a sample image</button>
+    </div>
+  </section>
+
+  <div class="main">
+    <section class="panel" aria-labelledby="files-h">
+      <div class="panel-head">
+        <h2 id="files-h">Uploaded <span id="count">(0)</span></h2>
+        <div class="actions">
+          <button class="btn small" id="previewAll" type="button" disabled>Preview all</button>
+          <button class="btn small ghost" id="clear" type="button" disabled>Clear</button>
+        </div>
+      </div>
+      <ul class="files" id="list"></ul>
+      <div class="empty" id="empty">No images yet. Choose files or add a sample.</div>
+    </section>
+
+    <section class="panel" aria-labelledby="prev-h">
+      <div class="panel-head"><h2 id="prev-h">Preview</h2></div>
+      <div class="stage-wrap" aria-live="polite">
+        <div class="stage idle" id="stage">Press Preview on an image to see it here with its dimensions.</div>
+        <p class="stage-name" id="stageName" hidden></p>
+        <dl class="facts" id="facts" hidden></dl>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  var items = [];
+  var activeId = null;
+  var seq = 0;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var list = $('list'), empty = $('empty'), stage = $('stage'), facts = $('facts'), stageName = $('stageName');
+  var picker = $('picker'), drop = $('drop'), count = $('count');
+  var previewAllBtn = $('previewAll'), clearBtn = $('clear');
+
+  function fmtSize(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1048576).toFixed(2) + ' MB';
+  }
+  function gcd(a, b) { return b ? gcd(b, a % b) : a; }
+  function ratio(w, h) { var g = gcd(w, h); return (w / g) + ':' + (h / g); }
+  function fmtNum(n) { return n.toLocaleString('en-US'); }
+
+  function addFiles(files) {
+    Array.prototype.forEach.call(files, function (file) {
+      if (!file.type || file.type.indexOf('image/') !== 0) return;
+      var item = { id: ++seq, file: file, url: URL.createObjectURL(file), w: 0, h: 0, shown: false };
+      items.push(item);
+      var probe = new Image();
+      probe.onload = function () { item.w = probe.naturalWidth; item.h = probe.naturalHeight; render(); };
+      probe.onerror = function () { item.error = true; render(); };
+      probe.src = item.url;
+    });
+    render();
+  }
+
+  function showPreview(id) {
+    var item = items.filter(function (i) { return i.id === id; })[0];
+    if (!item) return;
+    item.shown = true;
+    activeId = id;
+    render();
+  }
+
+  function removeItem(id) {
+    var idx = items.findIndex(function (i) { return i.id === id; });
+    if (idx < 0) return;
+    URL.revokeObjectURL(items[idx].url);
+    items.splice(idx, 1);
+    if (activeId === id) activeId = null;
+    render();
+  }
+
+  function renderStage() {
+    var item = items.filter(function (i) { return i.id === activeId; })[0];
+    if (!item) {
+      stage.className = 'stage idle';
+      stage.textContent = items.length ? 'Press Preview on an image to see it here with its dimensions.' : 'Add an image, then press Preview.';
+      facts.hidden = true; stageName.hidden = true;
+      return;
+    }
+    if (item.error) {
+      stage.className = 'stage idle';
+      stage.textContent = 'This file could not be read as an image.';
+      facts.hidden = true; stageName.hidden = true;
+      return;
+    }
+    stage.className = 'stage';
+    stage.innerHTML = '';
+    var frame = document.createElement('div');
+    frame.className = 'frame';
+    var img = document.createElement('img');
+    img.src = item.url; img.alt = 'Preview of ' + item.file.name;
+    var dw = document.createElement('div'); dw.className = 'dim dim-w';
+    var lw = document.createElement('span'); lw.className = 'dim-label'; lw.textContent = fmtNum(item.w) + ' px';
+    dw.appendChild(lw);
+    var dh = document.createElement('div'); dh.className = 'dim dim-h';
+    var lh = document.createElement('span'); lh.className = 'dim-label'; lh.textContent = fmtNum(item.h) + ' px';
+    dh.appendChild(lh);
+    frame.appendChild(img); frame.appendChild(dw); frame.appendChild(dh);
+    stage.appendChild(frame);
+
+    stageName.hidden = false; stageName.textContent = item.file.name;
+    var mp = (item.w * item.h / 1e6);
+    var rows = [
+      ['Width', fmtNum(item.w) + ' px'],
+      ['Height', fmtNum(item.h) + ' px'],
+      ['Aspect ratio', ratio(item.w, item.h)],
+      ['Megapixels', (mp < 0.1 ? mp.toFixed(3) : mp.toFixed(2)) + ' MP'],
+      ['File size', fmtSize(item.file.size)],
+      ['Type', item.file.type.replace('image/', '').toUpperCase()]
+    ];
+    facts.innerHTML = '';
+    rows.forEach(function (r) {
+      var d = document.createElement('div');
+      var dt = document.createElement('dt'); dt.textContent = r[0];
+      var dd = document.createElement('dd'); dd.textContent = r[1];
+      d.appendChild(dt); d.appendChild(dd); facts.appendChild(d);
+    });
+    facts.hidden = false;
+  }
+
+  function render() {
+    count.textContent = '(' + items.length + ')';
+    empty.hidden = items.length > 0;
+    previewAllBtn.disabled = clearBtn.disabled = items.length === 0;
+    list.innerHTML = '';
+    items.forEach(function (item) {
+      var li = document.createElement('li');
+      li.className = 'file' + (item.id === activeId ? ' active' : '');
+
+      var th = document.createElement('img');
+      th.className = 'thumb'; th.src = item.url; th.alt = '';
+
+      var meta = document.createElement('div'); meta.className = 'meta';
+      var name = document.createElement('div'); name.className = 'name'; name.textContent = item.file.name; name.title = item.file.name;
+      var sub = document.createElement('div'); sub.className = 'sub';
+      var dimText = item.shown && item.w ? '' : '';
+      sub.appendChild(document.createTextNode(fmtSize(item.file.size)));
+      if (item.shown && item.w) {
+        sub.appendChild(document.createTextNode(' · '));
+        var px = document.createElement('span'); px.className = 'px';
+        px.textContent = fmtNum(item.w) + ' × ' + fmtNum(item.h) + ' px';
+        sub.appendChild(px);
+      }
+      meta.appendChild(name); meta.appendChild(sub);
+
+      var acts = document.createElement('div'); acts.className = 'row-actions';
+      var pv = document.createElement('button');
+      pv.type = 'button'; pv.className = 'btn small primary'; pv.textContent = 'Preview';
+      pv.disabled = !item.w && !item.error;
+      pv.setAttribute('aria-label', 'Preview ' + item.file.name);
+      pv.addEventListener('click', function () { showPreview(item.id); });
+      var rm = document.createElement('button');
+      rm.type = 'button'; rm.className = 'btn small ghost'; rm.textContent = 'Remove';
+      rm.setAttribute('aria-label', 'Remove ' + item.file.name);
+      rm.addEventListener('click', function () { removeItem(item.id); });
+      acts.appendChild(pv); acts.appendChild(rm);
+
+      li.appendChild(th); li.appendChild(meta); li.appendChild(acts);
+      list.appendChild(li);
+    });
+    renderStage();
+  }
+
+  picker.addEventListener('change', function () { addFiles(picker.files); picker.value = ''; });
+
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+  });
+  drop.addEventListener('drop', function (e) { if (e.dataTransfer) addFiles(e.dataTransfer.files); });
+
+  previewAllBtn.addEventListener('click', function () {
+    items.forEach(function (i) { if (i.w) i.shown = true; });
+    if (!activeId) {
+      var first = items.filter(function (i) { return i.w; })[0];
+      if (first) activeId = first.id;
+    }
+    render();
+  });
+  clearBtn.addEventListener('click', function () {
+    items.forEach(function (i) { URL.revokeObjectURL(i.url); });
+    items = []; activeId = null; render();
+  });
+
+  $('sample').addEventListener('click', function () {
+    var sizes = [[1600, 900], [1080, 1350], [800, 800], [2400, 1000]];
+    var s = sizes[seq % sizes.length], w = s[0], h = s[1];
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var g = c.getContext('2d');
+    var grad = g.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, '#0b6e8a'); grad.addColorStop(1, '#f59e0b');
+    g.fillStyle = grad; g.fillRect(0, 0, w, h);
+    g.fillStyle = 'rgba(255,255,255,0.9)';
+    g.font = '600 ' + Math.round(Math.min(w, h) / 8) + 'px sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(w + ' × ' + h, w / 2, h / 2);
+    c.toBlob(function (blob) {
+      if (!blob) return;
+      addFiles([new File([blob], 'sample-' + w + 'x' + h + '.png', { type: 'image/png' })]);
+    }, 'image/png');
+  });
+
+  render();
+})();
+</script>
+
+</body></html>
